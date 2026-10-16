@@ -1,0 +1,99 @@
+\section{Method}
+\label{sec:method}
+
+\subsection{Task, Variables, and Scope}
+Let $C$ denote a product-carrier image, $S$ a reference image, and $x$ the synthesized image, all resized to the same spatial dimensions. The aim is to retain content features from $C$ while matching appearance and selected edge structure from $S$. The reference mask is fixed during optimization. No learned symbol detector, manually annotated semantic region, or carrier-surface correspondence is provided. Thus, an edge at position $p$ in $S$ constrains the same image position in $x$, even if the reference and carrier have different layouts.
+
+We distinguish a base objective, which adds a masked edge constraint to Gram-based style transfer, from a complementary multi-scale objective with separately weighted loss terms. They share image preprocessing and a frozen VGG-19 encoder, but are not a single stacked objective. Figure~\ref{fig:framework} summarizes their roles and the separate diagnostic branch. The implementation described below is the implementation associated with the archived results; its preprocessing limitations are made explicit rather than silently replaced with a standard implementation.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/v3/Fig2_framework_v3.pdf}
+\caption{Implemented objectives and diagnostic flow. Content and reference images provide frozen VGG-19 features. The base objective uses a masked Sobel constraint from the full reference. The multi-scale alternative uses high-band variance, middle-band edges with their own mask, and feature moments from the full image. The color-named term does not operate on a low-pass image. Solid arrows indicate synthesis constraints; the dashed arrow indicates diagnostics, with no feedback into optimization. Human judgment is not an available result.}
+\Description{A diagram of content and style inputs, frozen VGG features, the base reference-edge constraint, alternative multi-scale control terms, image optimization, and a separate diagnostic branch.}
+\label{fig:framework}
+\end{figure}
+
+\subsection{Image Representation and Base Appearance Objective}
+The archived loader resizes each RGB input to $256\times256$ using bilinear interpolation and maps pixel values to $[0,1]$. Let $N(I)=(I-\mu)/s$ denote channel-wise ImageNet normalization, with $\mu=(0.485,0.456,0.406)$ and $s=(0.229,0.224,0.225)$. The loader returns $N(I)$; the encoder applies $N$ again before feature extraction. Accordingly, the saved experiments use features of a twice-normalized input. This is an implementation departure from conventional once-normalized VGG use, affects the numerical scale of the losses, and limits direct comparisons with external implementations. We report these runs as archived local comparisons, not as corrected standard-preprocessing experiments.
+
+The encoder uses ImageNet-pretrained VGG-19~\cite{simonyan2014}; its weights remain frozen. We write $F_l$ for features at relu1\_1, relu2\_1, relu3\_1, relu4\_1, and relu5\_1 under that implemented preprocessing. For a feature tensor flattened to $A_l\in\mathbb{R}^{c_l\times n_l}$, the normalized Gram representation is
+\begin{equation}
+G_l=\frac{A_l A_l^{\mathsf T}}{c_l n_l}.
+\end{equation}
+With $\operatorname{MSE}$ denoting a mean over every element of its arguments, the base content and style terms are
+\begin{align}
+L_{content}(x,C)&=\operatorname{MSE}(F_{4,1}(x),F_{4,1}(C)),\\
+L_{style}(x,S)&=\sum_{l}\operatorname{MSE}(G_l(x),G_l(S)).
+\end{align}
+Here and below, $x,C,S$ in a loss denote the normalized tensors supplied by the loader or optimizer. The sum over style layers gives a global correlation constraint, while $L_{content}$ preserves the carrier's relu4\_1 representation. The large coefficient applied to $L_{style}$ compensates for its numerical scale; it should not be interpreted as a physical or perceptual unit conversion.
+
+\subsection{Masked Reference-Edge Constraint}
+The structural prior is extracted directly from the normalized reference tensor. Its grayscale projection is $g(I)=0.299I_R+0.587I_G+0.114I_B$. Zero-padded Sobel convolutions produce $g* K_x$ and $g*K_y$. The implemented edge magnitude and normalization are
+\begin{equation}
+\widetilde E_I(p)=\sqrt{(g*K_x)(p)^2+(g*K_y)(p)^2+\epsilon},\qquad
+E_I(p)=\frac{\widetilde E_I(p)}{\max_q\widetilde E_I(q)+\epsilon},
+\end{equation}
+where $\epsilon=10^{-8}$. The fixed reference mask is $M_S(p)=\mathbf{1}[E_S(p)>0.2]$. The constraint is
+\begin{equation}
+L_{ssp}(x,S)=\frac{1}{HW}\sum_{p}M_S(p)\big(E_x(p)-E_S(p)\big)^2.
+\label{eq:ssp}
+\end{equation}
+The denominator is the full image area, not the number of selected pixels, matching the tensor mean in the code. Changing the mask coverage can therefore change the term's effective scale. The edge maps are normalized separately for the output and reference, making this a relative edge-configuration constraint rather than an absolute contrast-preservation objective.
+
+The base optimization is
+\begin{equation}
+L_{base}=L_{content}+10^6 L_{style}+\lambda_{ssp}L_{ssp}.
+\end{equation}
+The paired baseline uses $\lambda_{ssp}=0$ and the main constrained setting uses $10^5$. Since the mask includes strong image boundaries rather than recognized cultural regions, we use ``symbol'' as the design intention and ``reference-edge agreement'' for the measured quantity. Coordinate-wise enforcement can also impose reference layout on the product; no claim of automatic surface registration follows from Eq.~\ref{eq:ssp}.
+
+\subsection{Multi-Scale Control Terms}
+Let $B_\sigma$ be channel-wise Gaussian filtering with zero padding, a normalized kernel, and kernel width $2\operatorname{round}(3\sigma)+1$. For $\sigma_h=1.5$ and $\sigma_l=5.0$, define
+\begin{equation}
+H(I)=I-B_{\sigma_h}(I),\qquad
+Q(I)=B_{\sigma_h}(I)-B_{\sigma_l}(I).
+\end{equation}
+These are high- and middle-frequency representations. Their filters overlap in frequency; they are not orthogonal projections. A low-pass image $B_{\sigma_l}(I)$ can illustrate the decomposition but is not the input to the implemented color loss.
+
+The texture term compares each channel's spatial variance in the high-frequency representation:
+\begin{equation}
+L_{texture}=\operatorname{MSE}(\operatorname{Var}_{p}H(x),\operatorname{Var}_{p}H(S)).
+\end{equation}
+The symbol-named term applies the same edge operator to $Q(x)$ and $Q(S)$, constructing a new mask $M_Q=\mathbf{1}[E_{Q(S)}>0.2]$:
+\begin{equation}
+L_{symbol}=\frac{1}{HW}\sum_p M_Q(p)\big(E_{Q(x)}(p)-E_{Q(S)}(p)\big)^2.
+\end{equation}
+This mask is distinct from the full-reference mask in Eq.~\ref{eq:ssp}. The color-named appearance term matches channel moments of the full-image relu4\_1 features:
+\begin{align}
+L_{color}={}&\operatorname{MSE}(\mu_p F_{4,1}(x),\mu_p F_{4,1}(S))\nonumber\\
+&+\operatorname{MSE}(\operatorname{Var}_p F_{4,1}(x),\operatorname{Var}_p F_{4,1}(S)).
+\end{align}
+These features can contain structural information, so the label ``color'' does not imply exclusive sensitivity to color. Variances follow the tensor library's sample-variance convention in the archived scripts.
+
+The multi-scale objective is
+\begin{equation}
+L_{multi}=L_{content}+w_{color}L_{color}+w_{symbol}L_{symbol}+w_{texture}L_{texture}.
+\end{equation}
+The available intervention run uses weights $(w_{color},w_{symbol},w_{texture})=(10^5,10^5,10^3)$ and removes one term at a time. This is a test of how objective changes affect a particular image pair. It does not by construction freeze the other visual attributes, and it is separate from the main base-objective experiment.
+
+\subsection{Additional Alignment Controls}
+The additional comparisons probe different reconstruction targets. The AdaIN branch first aligns content-feature channel moments to the style and decodes the target. Two subsequent 200-step refinements start from the same decoded image: one uses the base content and style objectives, and the other additionally uses $\lambda_{ssp}=10^5$. Comparing these refinements isolates the extra loss more closely than comparing a refined output with an unrefined feed-forward image. The decoder is loaded from a local checkpoint with a publicly used AdaIN architecture; checkpoint origin and compatibility with the encoder preprocessing require independent verification before claiming an exact published-method reproduction.
+
+For the covariance branch, a relu4\_1 target is constructed by whitening centered content features and coloring them using the style covariance, with singular-value decomposition and $10^{-5}$ regularization. The image is then reconstructed by 400-step optimization against target-feature MSE, optionally adding $300L_{ssp}$. This is a local WCT-inspired reconstruction, not the published multi-level encoder--decoder system.
+
+The attention branch computes cosine similarities between content and style relu4\_1 feature positions, applies a row-wise softmax with temperature $0.1$, and obtains attention-weighted style features. Their channel moments define an aligned target for 400-step reconstruction, again with $\lambda_{ssp}=0$ or $300$. Unlike the original AdaAttN~\cite{liu2021}, this implementation does not learn attention from multiple shallow and deep layers or reproduce its complete training procedure. The controls test compatibility within these local implementations; their results are not a benchmark against official state-of-the-art systems.
+
+\subsection{Diagnostics and Optimization Protocol}
+Reference-edge agreement is the masked cosine similarity
+\begin{equation}
+f_{sym}(x,S)=\frac{\langle M_SE_x,M_SE_S\rangle}{\|M_SE_x\|_2\|M_SE_S\|_2+10^{-8}}.
+\end{equation}
+It uses the same operator and mask as $L_{ssp}$, although cosine similarity and squared error differ. Its role is to report satisfaction of the structural prior. The CFM framework also includes a relative-style diagnostic,
+\begin{equation}
+f_{rel}=\frac{\overline d_{other}}{d(x,S)+\overline d_{other}+10^{-8}},
+\end{equation}
+where $d$ sums Gram MSE across the five layers and $\overline d_{other}$ averages distances to the other four reference images. A high value means closer matching to the target than to those particular alternatives, not independent cultural classification. No scalar composite CFM or validated human-judgment component is reported.
+
+The saved perceptual-distance table uses $D_{VGG}(x,C)=\sum_l\operatorname{MSE}(F_l(x),F_l(C))$. It is an uncalibrated feature-distance diagnostic, not standard LPIPS. FID was not computed. The CFM and perceptual scripts reload quantized output images, whereas the main comparison evaluates the in-memory optimized tensor; small differences between their edge scores need not imply different structural definitions.
+
+All optimization branches use Adam with learning rate $0.03$, gradient-norm clipping at $5$, and per-step clamping to $[-2,2]$ in the normalized tensor domain. Base and multi-scale runs initialize from the content tensor and nominally run for 400 steps; AdaIN refinement runs for 200 steps. The scripts break on a NaN loss and save the current output. The available CSV files do not include per-run termination flags, runtime, or repeated-seed identifiers. We therefore describe configured steps without claiming independently verified completion of every iteration or a measured efficiency advantage.

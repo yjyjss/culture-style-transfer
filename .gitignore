@@ -1,0 +1,28 @@
+# Credentials and machine configuration
+.env
+.env.*
+!.env.example
+*credential*
+*secret*
+*服务器地址*
+.ssh/
+# Data, trained weights, outputs, human-rating files, logs and caches
+data/
+models/
+output/
+results/
+user_study/ratings/
+*.pth
+*.pt
+*.ckpt
+*.safetensors
+*.csv
+*.log
+__pycache__/
+*.py[cod]
+.venv/
+manuscript_audit/
+*.aux
+*.bbl
+*.blg
+*.out

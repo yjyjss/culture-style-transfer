@@ -1,0 +1,206 @@
+{
+  "server_archive_sha256": "6f00db4364c0a9a7db36431ead117ea0b18a883ddf62aff3d5a706e0a7a4c94d",
+  "server_python_files": [
+    "adain_exp.py",
+    "analysis.py",
+    "attn_exp.py",
+    "cfm.py",
+    "evaluate.py",
+    "multiscale.py",
+    "multiscale_v2.py",
+    "multiscale_v3.py",
+    "run_exp.py",
+    "scan_lambda.py",
+    "stylize.py",
+    "wct_exp.py"
+  ],
+  "python_syntax_checked": 20,
+  "files": [
+    {
+      "path": ".gitignore",
+      "size": 377,
+      "sha256": "8ce3b3d1060a5edf64e39edee67afeb88be929e388c899642f8a953f17ac8f06",
+      "origin": "upload-documentation"
+    },
+    {
+      "path": "adain_exp.py",
+      "size": 6313,
+      "sha256": "faafd7d5eedc0b0804b427533fb13a524e023191b8a4b766cffe7822a5bd143d",
+      "origin": "server-original"
+    },
+    {
+      "path": "analysis.py",
+      "size": 5008,
+      "sha256": "9fd3ed5968071d588bf169ebbb59b15cd2f285a0f2ceacfbb813d1e7aadbebe0",
+      "origin": "server-original"
+    },
+    {
+      "path": "attn_exp.py",
+      "size": 4584,
+      "sha256": "ae1d413c16abffff3ad86d52e0b77966e05cbab3655d70f1daac9775fc2eafd0",
+      "origin": "server-original"
+    },
+    {
+      "path": "cfm.py",
+      "size": 3950,
+      "sha256": "a125511dcf8bd74286b04b7b93101474d43e03071a14f47dc58d68da33ff3719",
+      "origin": "server-original"
+    },
+    {
+      "path": "evaluate.py",
+      "size": 2911,
+      "sha256": "2735f5eeb24f4fa01b4c9a1163974506ad02385d57bdf34ec06f301b7a0a4da7",
+      "origin": "server-original"
+    },
+    {
+      "path": "manuscript/figures/Fig2_framework_v3.svg",
+      "size": 27550,
+      "sha256": "12db0e0b439b894fb09d35085f00a9541173318ad997886f7395bd1901e5bc8a",
+      "origin": "editable-method-diagram-source"
+    },
+    {
+      "path": "manuscript/main_v3.tex",
+      "size": 52641,
+      "sha256": "f0f193f602e1314efdf1a89f7dc1c4fedb55bd451b5fccbbebc6962ea240ea8d",
+      "origin": "revised-manuscript-source"
+    },
+    {
+      "path": "manuscript/refs_v3.bib",
+      "size": 5600,
+      "sha256": "ca7c3942ade2c7a2c4abfbaca762b79ff1fd9807946d8afb72165ce929546236",
+      "origin": "revised-manuscript-source"
+    },
+    {
+      "path": "multiscale.py",
+      "size": 3374,
+      "sha256": "7726d2092cac7ab9c861ba56fb7da70560d57a8e41b7a93daf1135e5630196cd",
+      "origin": "server-original"
+    },
+    {
+      "path": "multiscale_v2.py",
+      "size": 4495,
+      "sha256": "e6be0d290d0c2b80bf737dde093ed7fc7cb2265c938e3a1fe4ebbe6fd8ec6776",
+      "origin": "server-original"
+    },
+    {
+      "path": "multiscale_v3.py",
+      "size": 4285,
+      "sha256": "222a4b8d50b708d57c9790048a98051bbc33da81a827576cfe3e09a217e62638",
+      "origin": "server-original"
+    },
+    {
+      "path": "README.md",
+      "size": 4736,
+      "sha256": "7413e144dabdb3ef38966d14d2654aaf7c89e081a332f200129588cad2dc863e",
+      "origin": "upload-documentation"
+    },
+    {
+      "path": "requirements.txt",
+      "size": 182,
+      "sha256": "de4f685d51c52ebb6b71d788b63754ecaec8a2339d4f737d9e50bfa8402777cf",
+      "origin": "upload-documentation"
+    },
+    {
+      "path": "run_exp.py",
+      "size": 3468,
+      "sha256": "068b452b4d386c6d934e94d35e6a4734d74979b89b8c1235bcd8f6c7a5c9c194",
+      "origin": "server-original"
+    },
+    {
+      "path": "scan_lambda.py",
+      "size": 1760,
+      "sha256": "ad0b090e66a71f2145a9a82b92b6ad1e28f1edbfdd55bc1a14cc192d55f3d9a3",
+      "origin": "server-original"
+    },
+    {
+      "path": "stylize.py",
+      "size": 6529,
+      "sha256": "3de4ae2a37d6fea3b9f6619116589e051f788016d9464a1ca692ee9dd4c54ea1",
+      "origin": "server-original"
+    },
+    {
+      "path": "tools/figures/draw_figure2.py",
+      "size": 10628,
+      "sha256": "7606e7ba985e03c0d175693d4829bd59db781a7c0a1024e87fff5be736a9c1c1",
+      "origin": "local-figure-script"
+    },
+    {
+      "path": "tools/requirements.txt",
+      "size": 91,
+      "sha256": "f42c9b0d58e31e87a7fa96b6ebc40e7b17505e1ceee3e7541bf95610e8d72e2a",
+      "origin": "upload-documentation"
+    },
+    {
+      "path": "tools/revision/01_introduction/revise_intro.py",
+      "size": 12292,
+      "sha256": "0227872d8c393d394b8ad33d0b246541ecfb14b4139a948c0d11a5e7d7653664",
+      "origin": "local-manuscript-revision-script"
+    },
+    {
+      "path": "tools/revision/full_revision/02_related.tex",
+      "size": 5432,
+      "sha256": "41f5ff84bf5ca9858fcd2983ca7b1271971ce26859751b837141c73e86435ed8",
+      "origin": "local-manuscript-revision-source"
+    },
+    {
+      "path": "tools/revision/full_revision/03_method.tex",
+      "size": 11294,
+      "sha256": "71283c27ffe09efe6da56ac03c75b96233fb55fcd72a06b476043a69eac44be2",
+      "origin": "local-manuscript-revision-source"
+    },
+    {
+      "path": "tools/revision/full_revision/04_experiments.tex",
+      "size": 12029,
+      "sha256": "05e6192b2f487a043460617dcdb73834c571b3da210d4a63d65aee28c3703323",
+      "origin": "local-manuscript-revision-source"
+    },
+    {
+      "path": "tools/revision/full_revision/05_discussion.tex",
+      "size": 8427,
+      "sha256": "625c557e74fc215a1a631fae70bd84e7128a0493278377c3d5671f2fc72a9586",
+      "origin": "local-manuscript-revision-source"
+    },
+    {
+      "path": "tools/revision/full_revision/assemble_figures.py",
+      "size": 4854,
+      "sha256": "b548807e7ae86f43d9029ea34cdf0115fc6d81c3478ce0f896590547801bf694",
+      "origin": "local-manuscript-revision-source"
+    },
+    {
+      "path": "tools/revision/full_revision/build_full.py",
+      "size": 11053,
+      "sha256": "e97085154620ac67e502f5b0201f23864aea6df818bbf3101786211c46d7b36c",
+      "origin": "local-manuscript-revision-source"
+    },
+    {
+      "path": "tools/revision/full_revision/draw_framework_v3.py",
+      "size": 10699,
+      "sha256": "29d5ed019d1920f3d02657b79a88f6711ec2b88bd68d3ff4af1e65f162a3b3f1",
+      "origin": "local-manuscript-revision-source"
+    },
+    {
+      "path": "tools/revision/full_revision/finalize_report.py",
+      "size": 8353,
+      "sha256": "211dd6c3d09a9e795a760dca3078e7dbdda195b79e6fb5d255ac6adeec2be2c5",
+      "origin": "local-manuscript-revision-source"
+    },
+    {
+      "path": "tools/revision/full_revision/qa_revision.py",
+      "size": 2434,
+      "sha256": "3ddd9484fda0721232848a1b234a7ef6ea716320215f386080746e10c021278d",
+      "origin": "local-manuscript-revision-source"
+    },
+    {
+      "path": "tools/revision/full_revision/summarize.py",
+      "size": 2188,
+      "sha256": "f06c47bc491474b3b15a85c7dbb76b99c0ea0231cde7fcea9d63dfbab96bd47b",
+      "origin": "local-manuscript-revision-source"
+    },
+    {
+      "path": "wct_exp.py",
+      "size": 4400,
+      "sha256": "6ebd31eec207df6e961c21a1285c4919306e2853ae87cbb385a9602b4e409bc2",
+      "origin": "server-original"
+    }
+  ]
+}

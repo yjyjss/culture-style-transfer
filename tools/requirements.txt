@@ -1,0 +1,6 @@
+# Figure assembly and manuscript QA helpers
+Pillow
+reportlab
+pypdf
+pypdfium2
+PyMuPDF

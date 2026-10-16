@@ -1,0 +1,120 @@
+\section{Experiments}
+\label{sec:experiments}
+
+\subsection{Data, Comparisons, and Evidence Units}
+The main comparison used the Cartesian product of three ceramic tea-ware images and five reference images, producing 15 content--style pairs. The reference names describe Dunhuang lotus, Dunhuang deer, blue-and-white porcelain (full and ring examples), and ink landscape. Each category was represented by one image, so category means do not estimate within-category diversity. Inputs were resized to $256\times256$ and used without semantic annotations. The study concerns digital product visualizations; no physical products, cultural-authenticity labels, or three-dimensional mappings were evaluated.
+
+\begin{table}[t]
+\centering
+\caption{Evidence coverage of the archived experiments. Counts distinguish image pairs, outputs, and ratings. No repeated-seed uncertainty is available.}
+\label{tab:coverage}
+\begin{tabular}{@{}p{0.42\linewidth}p{0.53\linewidth}@{}}
+\toprule
+Comparison & Available evidence \\
+\midrule
+Base objective, with/without $L_{ssp}$ & 15 pairs, 30 result rows \\
+Additional alignment controls & 15 pairs per implementation \\
+Additional $\lambda_{ssp}$ settings & 15 pairs at $10^4$ and 15 at $10^6$ \\
+CFM objective diagnostics & 30 reloaded-output rows \\
+Saved VGG-distance diagnostic & 5 pairs, tea-set carrier only \\
+Multi-scale loss-removal images & 1 pair, 4 configurations \\
+Verified human judgments & None used as empirical evidence \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All descriptive summaries below were recalculated from the archived CSV records, matching baseline and constrained rows by content and reference names. Standard deviations describe variation across the 15 image pairs, not variation across independent training runs. The same references and carriers recur across pairs, and the collection is not a random sample from a cultural-image population. We therefore emphasize paired descriptive effects rather than treating the 15 pairs as independent evidence of population-level statistical significance. No equivalence margin was prespecified for content or appearance preservation.
+
+The archived code and saved results support a retrospective comparison. They do not establish a held-out benchmark: the constraint weights were selected during development, and the same small reference collection was used for evaluation. The analysis therefore addresses the research questions within the available examples, with generalization and independent perceptual validity left unresolved.
+
+\subsection{Reference-Edge Agreement and Content Trade-Off}
+Adding the reference-edge term increased the measured edge agreement for all 15 content--style pairs. The pair-level mean increased from $0.6615$ to $0.9211$, an absolute change of $0.2596$ and a relative increase of $39.2\%$. Across-pair standard deviations were $0.0421$ and $0.0727$, respectively. The paired differences had standard deviation $0.0519$. These observations answer RQ1 in the narrow sense that the added loss improves agreement with its reference-derived structural target.
+
+Table~\ref{tab:main} reports means over the three carriers for each reference. The largest mean absolute increase occurred for the lotus reference, while the full porcelain reference retained a lower constrained score than the other examples. Because each reference category contains one image, this variation should be interpreted as reference-specific behavior, not a ranking of cultural styles. Figure~\ref{fig:qualitative} presents archived outputs for the tea-set carrier under three named references; numerical conclusions use all 15 pairs rather than only the displayed examples.
+
+\begin{table}[t]
+\centering
+\caption{Base-objective comparison, grouped by reference image. Edge agreement is unitless and larger is better; content loss is the implemented feature MSE and smaller is better. Each reference mean covers three carriers.}
+\label{tab:main}
+\small
+\begin{tabular}{@{}p{0.29\linewidth}rrrrr@{}}
+\toprule
+Reference & \multicolumn{3}{c}{Edge agreement} & \multicolumn{2}{c}{Content loss}\\
+\cmidrule(lr){2-4}\cmidrule(l){5-6}
+ & Base & Constr. & $\Delta$ & Base & Constr.\\
+\midrule
+@@STYLE_ROWS@@
+\midrule
+All 15 pairs & 0.6615 & 0.9211 & 0.2596 & 393.76 & 398.28\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The content objective did not remain identical: its mean increased by $1.15\%$, with an increase in 12 pairs and a decrease in three. This modest aggregate change is a measured trade-off, not a demonstration of perceptual equivalence. The saved Gram-loss values were rounded to two decimal places, leaving most entries at $0.00$ or $0.01$. Their limited precision prevents a reliable conclusion that style loss was unchanged or fully converged. A numerical near-zero in that table also does not establish that human observers perceive equal style quality.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/v3/Fig3_actual_comparison.pdf}
+\caption{Archived image comparison for the tea-set carrier with the lotus, ring-porcelain, and ink-landscape references. Columns show the reference, base-objective output, and constrained output. The same image dimensions and display processing are used across columns. These examples illustrate the comparison; all-pair numerical summaries are reported in Table~\ref{tab:main}.}
+\Description{Three rows of actual reference, baseline, and edge-constrained images for the tea-set carrier.}
+\label{fig:qualitative}
+\end{figure}
+
+\subsection{Additional Alignment and Constraint-Weight Comparisons}
+The edge constraint also increased the same structural diagnostic in the three additional local pipelines (Table~\ref{tab:alignment}). For AdaIN initialization, refinement without $L_{ssp}$ already improved the score from $0.6023$ to $0.7034$. Adding the structural term to a refinement of equal configured length raised it further to $0.9047$. The relevant incremental comparison is therefore constrained refinement versus unconstrained refinement, rather than constrained refinement versus the unrefined decoder output. This distinction separates the effect of extra optimization from that of the added objective.
+
+The covariance and attention controls showed positive mean differences as well. Their reconstructions used a different objective scale and $\lambda_{ssp}=300$, compared with $10^5$ in the Gram-based and AdaIN-refinement branches. These runs support compatibility with the local alignment targets; they do not establish an implementation-independent advantage, optimal tuning, or performance against the published WCT and AdaAttN systems. Additional content-quality and computational-cost measurements would be required for a balanced cross-system comparison.
+
+\begin{table}[t]
+\centering
+\caption{Reference-edge agreement in local alignment pipelines, averaged over 15 pairs. ``Control'' is the corresponding reconstruction or refinement without $L_{ssp}$. The unrefined AdaIN initialization has mean 0.6023 and is not the matched refinement control.}
+\label{tab:alignment}
+\begin{tabular}{@{}p{0.46\linewidth}rrr@{}}
+\toprule
+Implemented comparison & Control & With $L_{ssp}$ & $\Delta$\\
+\midrule
+Gram-based optimization & 0.6615 & 0.9211 & 0.2596\\
+AdaIN-initialized refinement & 0.7034 & 0.9047 & 0.2013\\
+Covariance-target reconstruction & 0.6963 & 0.9380 & 0.2417\\
+Attention-target reconstruction & 0.7037 & 0.9610 & 0.2573\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Increasing the structural coefficient increased mean reference-edge agreement at the four available settings (Table~\ref{tab:lambda}). The $0$ and $10^5$ values come from the main comparison, and the other settings were evaluated on the same 15 pairs. This trend confirms that the measured structural target responds to its weight. It does not identify an optimal cultural-fidelity setting: the sweep did not quantify output diversity, human preference, or a joint utility criterion. In particular, the high score at $10^6$ cannot by itself justify that setting or prove that $10^5$ is a perceptually optimal balance.
+
+\begin{table}[t]
+\centering
+\caption{Constraint-weight sensitivity for the base formulation. Each mean covers the same 15 image pairs. The sweep measures reference-edge agreement, not semantic validity or an optimum in perceptual trade-offs.}
+\label{tab:lambda}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+$\lambda_{ssp}$ & Pairs & Mean edge agreement\\
+\midrule
+$0$ & 15 & 0.6615\\
+$10^4$ & 15 & 0.7577\\
+$10^5$ & 15 & 0.9211\\
+$10^6$ & 15 & 0.9858\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Multi-Scale Loss-Removal Case Study}
+The available multi-scale experiment used the tea-set/lotus pair and produced four images: the full objective, and separate removals of the color-, symbol-, and texture-named terms. Figure~\ref{fig:intervention} displays those archived outputs. It provides a direct visual record of what changed when the configured objective changed. The study contains no cross-pair attribute annotations, perceptual ratings, or quantitative off-target-effect measurements. It therefore addresses RQ2 as a qualitative case study, not a statistical demonstration of independent control.
+
+The three terms have distinct inputs and can be adjusted separately in the implementation. However, their effects need not be visually disjoint: feature moments contain structural information, edges contain texture, and Gaussian bands overlap. We consequently retain the intervention as evidence of an inspectable control interface while withdrawing the stronger claim that every removal changes only its named attribute. A convincing independence test would measure both the intended attribute change and off-target changes across multiple references and carriers.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/v3/Fig4_actual_interventions.pdf}
+\caption{Actual multi-scale loss-removal outputs for the single tea-set/lotus case. Panels show the full objective and removal of the color-, symbol-, or texture-named term, with all other configured coefficients held fixed. Labels name loss terms rather than independently validated semantic layers. No image in this panel is a simulated outcome or a separate human rating.}
+\Description{Four equally sized archived outputs: full objective, no color term, no symbol term, and no texture term.}
+\label{fig:intervention}
+\end{figure}
+
+\subsection{Diagnostic Agreement and Evaluation Boundaries}
+The reloaded-output CFM edge score increased from $0.6617$ to $0.9213$, close to the in-memory structural scores. This agreement is expected because both diagnostics use the same Sobel prior; it does not constitute independent confirmation of semantic preservation. The relative-style ratio remained near its upper end, changing from $0.99097$ to $0.99045$. This saturation limits its discrimination within this small set of references, but cannot establish a general failure of appearance statistics or cultural evaluation.
+
+The saved VGG-distance records cover only the five tea-set/reference pairs. Their mean increased from $1022.65$ to $1043.50$, or $2.04\%$. The evaluator's filename parsing uses the prefix before the first underscore as the content name, which excludes the other two carrier names from this saved table. We report the available subset explicitly instead of treating its mean as a 15-pair result. These distances were calculated after saving and reloading images and are not standard LPIPS measurements. FID was not evaluated.
+
+Together, these observations answer RQ3 by establishing the scope of the diagnostics: they quantify edge-target satisfaction, feature discrepancy, and relative matching to a particular reference set. They do not demonstrate that conventional metrics are blind to human-recognizable cultural distortion. The available human-rating file is documented as simulated in the study materials and is excluded from empirical evidence. No correlation with real cultural judgments, inter-rater reliability, or human preference effect is claimed.

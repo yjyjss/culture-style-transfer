@@ -1,0 +1,7 @@
+# Minimal import dependencies; not an environment lockfile.
+# Use a mutually compatible torch/torchvision pair for your CUDA environment.
+torch
+torchvision
+numpy
+Pillow
+scipy

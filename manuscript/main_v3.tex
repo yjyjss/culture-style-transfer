@@ -1,0 +1,393 @@
+%% ACM journal manuscript (JOCCH) - acmart v2.x, acmlarge variant
+%% Compile with pdflatex; bibliography via BibTeX (ACM-Reference-Format)
+%% NOTE: author block below is a PLACEHOLDER -- confirm author list, affiliations
+%% and emails before submission.
+\documentclass[manuscript,acmlarge,screen,review]{acmart}
+
+\usepackage{booktabs}
+\setlength{\emergencystretch}{1em}
+\microtypesetup{expansion=false}
+\microtypesetup{protrusion=false}
+
+\begin{document}
+
+\title{Reference-Edge Constraints and Multi-Scale Control in Ceramic Product Image Stylization}
+
+\author{Xiaoyan Yang}
+\affiliation{%
+  \institution{Luoyang Institute of Science and Technology}
+  \city{Luoyang}
+  \country{China}}
+\email{TODO@example.edu}  %% TODO: replace with real email
+
+%% TODO: add co-authors here if applicable
+
+\begin{abstract}
+Neural style transfer can adapt a cultural reference to a product image, but appearance matching does not uniquely specify the contours of the reference motif. We examine an explicit reference-edge constraint and complementary multi-scale control terms for ceramic product-image stylization. The base formulation adds masked Sobel-edge matching to content and Gram-style objectives. A separate formulation weights full-image feature moments, middle-frequency edges, and high-frequency variance. We analyze an archived collection of five references paired with three ceramic tea-ware images. Adding the edge constraint increases mean reference-edge agreement from 0.6615 to 0.9211 across all 15 pairs, while the mean content objective increases by 1.15\%. Additional local refinement and reconstruction controls show positive changes in the same edge diagnostic. A single multi-scale loss-removal case illustrates the control interface but does not establish semantic independence of its terms. The evaluation explicitly distinguishes objective satisfaction from independent cultural validity: the structure score shares the training prior, the available VGG-distance results cover only five pairs, and verified human judgments are absent. The archived pipeline also contains a repeated-normalization implementation that requires standard-preprocessing replication. These results establish a bounded computational effect of a transparent reference-structure constraint and identify the measurements needed to evaluate its cultural and perceptual usefulness.
+\end{abstract}
+
+\ccsdesc[500]{Applied computing~Arts and humanities}
+\ccsdesc[300]{Computing methodologies~Neural networks}
+\keywords{neural style transfer, ceramic product visualization, reference-edge constraints, multi-scale control, diagnostic evaluation}
+
+\maketitle
+
+\section{Introduction}
+
+Cultural and creative product design brings visual references from cultural heritage into new application contexts. For image-based design exploration, the practical task is to combine the appearance of a reference artwork with a product carrier while retaining visual features that identify the reference. A lotus contour, a figurative motif, and the palette of a porcelain pattern can each contribute to that identity, but they impose different requirements on image synthesis. Transferring a palette does not necessarily preserve a motif, and reproducing a motif does not by itself establish its cultural appropriateness. This distinction matters when computational tools are used to propose product visualizations rather than to reproduce an artwork. Cultural-heritage resources, such as those developed for Dunhuang, make this broader computational setting possible, while culturally situated evaluation emphasizes the role of artists and domain knowledge in interpreting generated imagery~\cite{yu2022,qadri2024}.
+
+Neural style transfer provides a starting point for this task by combining content representations with appearance constraints. Gatys et al.\ match correlations between convolutional features using Gram matrices~\cite{gatys2016}. Adaptive instance normalization (AdaIN) aligns channel-wise means and variances, whereas whitening and coloring transforms (WCT) align feature covariance~\cite{huang2017,li2017}. These formulations capture useful appearance statistics, but a statistic aggregated over feature locations does not uniquely specify the arrangement of a reference motif. Consequently, a low style-matching loss alone cannot guarantee that the desired reference contours remain in the synthesized image. Attention-based approaches address part of this difficulty: AdaAttN uses spatial attention and local feature statistics to improve local stylization~\cite{liu2021}. The remaining question for the present application is therefore more specific than whether style transfer can use spatial information: it is how an explicit reference-structure constraint interacts with appearance matching and product-content preservation.
+
+Controllability is also an established concern in neural style transfer. Previous work introduced controls over spatial location, color, and spatial scale, including combinations of appearance information from multiple references~\cite{gatys2017control}. It would therefore be inaccurate to treat the separation of perceptual factors as a new problem. The issue examined here is whether a compact, explicitly weighted formulation can expose useful adjustments for a fixed set of cultural-reference and product-image pairs. In this setting, a designer may wish to strengthen a motif contour without making the entire image more textured, or adjust overall appearance without imposing the same change on every structural detail. Such adjustments require identifiable loss terms and intervention tests; giving terms different names or different weights does not establish that their visual effects are independent.
+
+The structure constraint itself introduces a trade-off that needs to be made explicit. The content image determines the carrier layout, whereas the style reference supplies a different arrangement of edges. Enforcing the reference arrangement at the same image coordinates can compete with preservation of the carrier, particularly when the motif and product occupy different regions. An edge detector offers a reproducible way to specify the reference structure, but it also responds to decorative texture and other intensity boundaries. It supplies neither a semantic segmentation of cultural symbols nor a geometric correspondence between a motif and a three-dimensional surface. We consequently formulate the present task as two-dimensional visual-structure transfer under competing image losses, with cultural interpretation remaining a separate question.
+
+Evaluation must distinguish these same levels of evidence. An edge-similarity score can determine whether a synthesis satisfies an edge-based constraint, while a content-feature distance measures a different property. Neither quantity, in isolation, establishes that people recognize the intended symbol or judge the design culturally appropriate. This limitation is especially consequential when the optimization loss and the reported structure score use the same Sobel operator and reference mask. Their agreement is informative about objective satisfaction, but is not independent validation. We therefore distinguish computational diagnostics from human judgment, consistent with the need for context-sensitive assessment of culturally situated creative tools~\cite{qadri2024}. We also distinguish the implemented VGG feature-distance diagnostic from the standard learned LPIPS metric and from distributional measures such as FID; uncomputed metrics cannot support an empirical comparison.
+
+To examine these issues, we study a structure-preserving and layer-decoupled style-transfer framework with a frozen VGG-19 encoder. In the base formulation, a symbol-structure-preservation loss, $L_{ssp}$, aligns output edge magnitudes with the reference inside a thresholded reference-edge mask. The word ``symbol'' names the intended design target; the implemented mask remains an edge-based proxy. A complementary multi-scale formulation assigns separate weights to feature-moment appearance matching, middle-frequency edge alignment, and high-frequency energy matching. These terms provide operational controls for color, symbol, and texture, respectively, without assuming a one-to-one correspondence between frequency bands and semantic attributes. The Cultural Fidelity Metric (CFM) is retained as a diagnostic framework that separates reference-edge agreement, relative style matching, and a human-judgment component that has not yet been collected.
+
+The study is organized around three questions. \textbf{RQ1}: on the available content--style pairs, does adding $L_{ssp}$ improve reference-edge agreement, and what changes accompany it in the measured content and appearance objectives? \textbf{RQ2}: when one multi-scale loss term is disabled, which visual attributes change and which remain coupled? \textbf{RQ3}: what can the implemented computational diagnostics establish, and which interpretations require independent human evidence? These questions separate an optimization effect, a controllability test, and an evaluation boundary. In particular, an increase in a training-related score is not treated as sufficient evidence of cultural fidelity, and a small change in another loss is not treated as a formal demonstration of equivalence.
+
+Our experimental scope is deliberately limited. The main benchmark contains five reference images, representing Dunhuang lotus and deer motifs, two blue-and-white porcelain references, and an ink landscape, paired with three ceramic tea-ware images at $256\times256$ resolution. The resulting 15 pairs support a pilot comparison of the base objectives. Additional experiments examine AdaIN-initialized refinement and local optimization-based implementations of covariance and attention alignment; these distinguish implementation-level observations from claims about the corresponding original systems. The multi-scale intervention study examines the available tea-set/lotus example. These experiments do not establish generalization to other product materials, reliable transfer to three-dimensional surfaces, or a validated measure of cultural meaning.
+
+Within this scope, the paper makes three concrete contributions:
+\begin{itemize}
+\item An explicit reference-edge constraint for product-image stylization, together with comparisons that expose its interaction with content and appearance objectives.
+\item A multi-scale formulation with separately weighted appearance, structure, and texture terms, examined through loss-removal interventions rather than assumed semantic independence.
+\item A diagnostic evaluation that separates training-related structure agreement from other computational measurements and identifies the need for independent cultural and perceptual assessment.
+\end{itemize}
+Section~\ref{sec:related} positions the approach relative to prior work. Section~\ref{sec:method} specifies the objectives and diagnostics, Section~\ref{sec:experiments} reports the available comparisons and interventions, and Section~\ref{sec:discussion} discusses their interpretation and limitations before the conclusion.
+
+\begin{figure}[!htbp]
+\includegraphics[width=\linewidth]{figures/Fig1_concept.png}
+\caption{Illustrative comparison of product-image stylization without and with the reference-edge constraint. The intended target is visual motif structure; cultural appropriateness requires separate assessment.}\label{fig:concept}
+\end{figure}
+
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Appearance Matching and Local Correspondence}
+Optimization-based neural style transfer separates two roles for pretrained convolutional features. A content objective constrains the representation of the carrier image, whereas a style objective matches feature correlations to a reference~\cite{gatys2016}. Feed-forward synthesis reduces the cost of producing an output by learning an image transformation, often using perceptual objectives~\cite{johnson2016}. AdaIN instead constructs a style-conditioned feature representation by matching channel-wise statistics, and WCT matches covariance through whitening and coloring~\cite{huang2017,li2017}. These mechanisms offer different ways to specify appearance, rather than interchangeable implementations of a single algorithm.
+
+The spatial aggregation in Gram matrices and channel moments motivates explicit treatment of local correspondence. AdaAttN calculates attention-weighted local statistics and performs point-wise normalization~\cite{liu2021}. Its use of shallow and deep features also differs from a single-layer feature-matching implementation. We therefore distinguish the published methods from the local controls used in this study: the latter test whether an additional edge constraint changes an optimization result, not whether the entire proposed framework outperforms the original trained systems. This distinction is necessary because reconstruction architecture, initialization, preprocessing, and optimization budget can themselves affect the output.
+
+\subsection{Perceptual Control and Multi-Scale Stylization}
+The ability to control appearance attributes predates the present framework. Gatys et al.\ introduced controls over spatial location, color, and spatial scale, including combinations of styles from different references~\cite{gatys2017control}. LapStyle uses a learned drafting-and-revision architecture with a Laplacian pyramid to address global and local appearance at different resolutions~\cite{lapstyle2021}. These studies establish both perceptual-factor control and multi-scale processing as relevant precedents.
+
+Our formulation uses fixed Gaussian filters to construct high-frequency and middle-frequency inputs to two losses, together with a feature-moment appearance term. It does not introduce a new pyramid representation or learn a semantic factorization. Its intended utility is an explicit set of weighted objectives whose effects can be inspected on a product-image task. Because Gaussian filters have overlapping frequency responses and visual motifs occupy multiple scales, separate coefficients alone do not guarantee independent attributes. Loss-removal images are consequently interpreted as interventions on an objective, with cross-attribute effects remaining an empirical question.
+
+\subsection{Cultural References and Product-Image Design}
+Culture-specific stylization and heritage digitization address related but distinct problems. ChipGAN provides an adversarial approach to Chinese ink-wash painting transfer~\cite{he2018}, whereas the Dunhuang project provides resources and tasks for computational heritage protection~\cite{yu2022}. The existence of such resources does not imply that their annotations, rights, or cultural interpretations transfer to an arbitrary collection of product-design references. In particular, the current five reference images form a small experimental collection rather than a representative cultural dataset.
+
+We study reference-conditioned synthesis on ceramic tea-ware images. The product silhouette supplies the content target and a cultural-reference image supplies appearance and edge targets. This formulation differs from conservation, historical reconstruction, three-dimensional texture mapping, and evaluation by cultural specialists. The edge constraint is a measurable design prior within the image coordinate system; it does not encode the historical meaning of a lotus, deer, or porcelain motif. The practical question is whether this prior helps retain reference structure without unacceptable interference with the carrier, not whether edge alignment alone authenticates a design.
+
+\subsection{Measurement and Culturally Situated Evaluation}
+Perceptual and distributional metrics address different comparison problems. LPIPS uses deep representations calibrated against perceptual judgments~\cite{zhang2018lpips}, while FID compares distributions of image features~\cite{heusel2017fid}. A sum of uncalibrated VGG feature mean-squared errors is neither of these measures. Its scale depends on preprocessing, layer selection, and feature magnitudes. Similarly, a relative Gram-distance ratio concerns appearance alignment and does not directly measure a motif's cultural acceptability.
+
+Culturally situated evaluation extends beyond benchmark agreement. Qadri et al.\ examine dialogue involving artists and art-world experts as a way to interpret generative tools in their creative contexts~\cite{qadri2024}. This perspective motivates a boundary in our evaluation: the CFM edge sub-score describes agreement with the same structural prior used by the optimizer, while independent cultural judgment requires separate evidence. The present computational comparisons can expose differences between diagnostics, but cannot establish the superiority of an unvalidated cultural metric or a general failure of FID and LPIPS.
+
+\section{Method}
+\label{sec:method}
+
+\subsection{Task, Variables, and Scope}
+Let $C$ denote a product-carrier image, $S$ a reference image, and $x$ the synthesized image, all resized to the same spatial dimensions. The aim is to retain content features from $C$ while matching appearance and selected edge structure from $S$. The reference mask is fixed during optimization. No learned symbol detector, manually annotated semantic region, or carrier-surface correspondence is provided. Thus, an edge at position $p$ in $S$ constrains the same image position in $x$, even if the reference and carrier have different layouts.
+
+We distinguish a base objective, which adds a masked edge constraint to Gram-based style transfer, from a complementary multi-scale objective with separately weighted loss terms. They share image preprocessing and a frozen VGG-19 encoder, but are not a single stacked objective. Figure~\ref{fig:framework} summarizes their roles and the separate diagnostic branch. The implementation described below is the implementation associated with the archived results; its preprocessing limitations are made explicit rather than silently replaced with a standard implementation.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/v3/Fig2_framework_v3.pdf}
+\caption{Implemented objectives and diagnostic flow. Content and reference images provide frozen VGG-19 features. The base objective uses a masked Sobel constraint from the full reference. The multi-scale alternative uses high-band variance, middle-band edges with their own mask, and feature moments from the full image. The color-named term does not operate on a low-pass image. Solid arrows indicate synthesis constraints; the dashed arrow indicates diagnostics, with no feedback into optimization. Human judgment is not an available result.}
+\Description{A diagram of content and style inputs, frozen VGG features, the base reference-edge constraint, alternative multi-scale control terms, image optimization, and a separate diagnostic branch.}
+\label{fig:framework}
+\end{figure}
+
+\subsection{Image Representation and Base Appearance Objective}
+The archived loader resizes each RGB input to $256\times256$ using bilinear interpolation and maps pixel values to $[0,1]$. Let $N(I)=(I-\mu)/s$ denote channel-wise ImageNet normalization, with $\mu=(0.485,0.456,0.406)$ and $s=(0.229,0.224,0.225)$. The loader returns $N(I)$; the encoder applies $N$ again before feature extraction. Accordingly, the saved experiments use features of a twice-normalized input. This is an implementation departure from conventional once-normalized VGG use, affects the numerical scale of the losses, and limits direct comparisons with external implementations. We report these runs as archived local comparisons, not as corrected standard-preprocessing experiments.
+
+The encoder uses ImageNet-pretrained VGG-19~\cite{simonyan2014}; its weights remain frozen. We write $F_l$ for features at relu1\_1, relu2\_1, relu3\_1, relu4\_1, and relu5\_1 under that implemented preprocessing. For a feature tensor flattened to $A_l\in\mathbb{R}^{c_l\times n_l}$, the normalized Gram representation is
+\begin{equation}
+G_l=\frac{A_l A_l^{\mathsf T}}{c_l n_l}.
+\end{equation}
+With $\operatorname{MSE}$ denoting a mean over every element of its arguments, the base content and style terms are
+\begin{align}
+L_{content}(x,C)&=\operatorname{MSE}(F_{4,1}(x),F_{4,1}(C)),\\
+L_{style}(x,S)&=\sum_{l}\operatorname{MSE}(G_l(x),G_l(S)).
+\end{align}
+Here and below, $x,C,S$ in a loss denote the normalized tensors supplied by the loader or optimizer. The sum over style layers gives a global correlation constraint, while $L_{content}$ preserves the carrier's relu4\_1 representation. The large coefficient applied to $L_{style}$ compensates for its numerical scale; it should not be interpreted as a physical or perceptual unit conversion.
+
+\subsection{Masked Reference-Edge Constraint}
+The structural prior is extracted directly from the normalized reference tensor. Its grayscale projection is $g(I)=0.299I_R+0.587I_G+0.114I_B$. Zero-padded Sobel convolutions produce $g* K_x$ and $g*K_y$. The implemented edge magnitude and normalization are
+\begin{equation}
+\widetilde E_I(p)=\sqrt{(g*K_x)(p)^2+(g*K_y)(p)^2+\epsilon},\qquad
+E_I(p)=\frac{\widetilde E_I(p)}{\max_q\widetilde E_I(q)+\epsilon},
+\end{equation}
+where $\epsilon=10^{-8}$. The fixed reference mask is $M_S(p)=\mathbf{1}[E_S(p)>0.2]$. The constraint is
+\begin{equation}
+L_{ssp}(x,S)=\frac{1}{HW}\sum_{p}M_S(p)\big(E_x(p)-E_S(p)\big)^2.
+\label{eq:ssp}
+\end{equation}
+The denominator is the full image area, not the number of selected pixels, matching the tensor mean in the code. Changing the mask coverage can therefore change the term's effective scale. The edge maps are normalized separately for the output and reference, making this a relative edge-configuration constraint rather than an absolute contrast-preservation objective.
+
+The base optimization is
+\begin{equation}
+L_{base}=L_{content}+10^6 L_{style}+\lambda_{ssp}L_{ssp}.
+\end{equation}
+The paired baseline uses $\lambda_{ssp}=0$ and the main constrained setting uses $10^5$. Since the mask includes strong image boundaries rather than recognized cultural regions, we use ``symbol'' as the design intention and ``reference-edge agreement'' for the measured quantity. Coordinate-wise enforcement can also impose reference layout on the product; no claim of automatic surface registration follows from Eq.~\ref{eq:ssp}.
+
+\subsection{Multi-Scale Control Terms}
+Let $B_\sigma$ be channel-wise Gaussian filtering with zero padding, a normalized kernel, and kernel width $2\operatorname{round}(3\sigma)+1$. For $\sigma_h=1.5$ and $\sigma_l=5.0$, define
+\begin{equation}
+H(I)=I-B_{\sigma_h}(I),\qquad
+Q(I)=B_{\sigma_h}(I)-B_{\sigma_l}(I).
+\end{equation}
+These are high- and middle-frequency representations. Their filters overlap in frequency; they are not orthogonal projections. A low-pass image $B_{\sigma_l}(I)$ can illustrate the decomposition but is not the input to the implemented color loss.
+
+The texture term compares each channel's spatial variance in the high-frequency representation:
+\begin{equation}
+L_{texture}=\operatorname{MSE}(\operatorname{Var}_{p}H(x),\operatorname{Var}_{p}H(S)).
+\end{equation}
+The symbol-named term applies the same edge operator to $Q(x)$ and $Q(S)$, constructing a new mask $M_Q=\mathbf{1}[E_{Q(S)}>0.2]$:
+\begin{equation}
+L_{symbol}=\frac{1}{HW}\sum_p M_Q(p)\big(E_{Q(x)}(p)-E_{Q(S)}(p)\big)^2.
+\end{equation}
+This mask is distinct from the full-reference mask in Eq.~\ref{eq:ssp}. The color-named appearance term matches channel moments of the full-image relu4\_1 features:
+\begin{align}
+L_{color}={}&\operatorname{MSE}(\mu_p F_{4,1}(x),\mu_p F_{4,1}(S))\nonumber\\
+&+\operatorname{MSE}(\operatorname{Var}_p F_{4,1}(x),\operatorname{Var}_p F_{4,1}(S)).
+\end{align}
+These features can contain structural information, so the label ``color'' does not imply exclusive sensitivity to color. Variances follow the tensor library's sample-variance convention in the archived scripts.
+
+The multi-scale objective is
+\begin{equation}
+L_{multi}=L_{content}+w_{color}L_{color}+w_{symbol}L_{symbol}+w_{texture}L_{texture}.
+\end{equation}
+The available intervention run uses weights $(w_{color},w_{symbol},w_{texture})=(10^5,10^5,10^3)$ and removes one term at a time. This is a test of how objective changes affect a particular image pair. It does not by construction freeze the other visual attributes, and it is separate from the main base-objective experiment.
+
+\subsection{Additional Alignment Controls}
+The additional comparisons probe different reconstruction targets. The AdaIN branch first aligns content-feature channel moments to the style and decodes the target. Two subsequent 200-step refinements start from the same decoded image: one uses the base content and style objectives, and the other additionally uses $\lambda_{ssp}=10^5$. Comparing these refinements isolates the extra loss more closely than comparing a refined output with an unrefined feed-forward image. The decoder is loaded from a local checkpoint with a publicly used AdaIN architecture; checkpoint origin and compatibility with the encoder preprocessing require independent verification before claiming an exact published-method reproduction.
+
+For the covariance branch, a relu4\_1 target is constructed by whitening centered content features and coloring them using the style covariance, with singular-value decomposition and $10^{-5}$ regularization. The image is then reconstructed by 400-step optimization against target-feature MSE, optionally adding $300L_{ssp}$. This is a local WCT-inspired reconstruction, not the published multi-level encoder--decoder system.
+
+The attention branch computes cosine similarities between content and style relu4\_1 feature positions, applies a row-wise softmax with temperature $0.1$, and obtains attention-weighted style features. Their channel moments define an aligned target for 400-step reconstruction, again with $\lambda_{ssp}=0$ or $300$. Unlike the original AdaAttN~\cite{liu2021}, this implementation does not learn attention from multiple shallow and deep layers or reproduce its complete training procedure. The controls test compatibility within these local implementations; their results are not a benchmark against official state-of-the-art systems.
+
+\subsection{Diagnostics and Optimization Protocol}
+Reference-edge agreement is the masked cosine similarity
+\begin{equation}
+f_{sym}(x,S)=\frac{\langle M_SE_x,M_SE_S\rangle}{\|M_SE_x\|_2\|M_SE_S\|_2+10^{-8}}.
+\end{equation}
+It uses the same operator and mask as $L_{ssp}$, although cosine similarity and squared error differ. Its role is to report satisfaction of the structural prior. The CFM framework also includes a relative-style diagnostic,
+\begin{equation}
+f_{rel}=\frac{\overline d_{other}}{d(x,S)+\overline d_{other}+10^{-8}},
+\end{equation}
+where $d$ sums Gram MSE across the five layers and $\overline d_{other}$ averages distances to the other four reference images. A high value means closer matching to the target than to those particular alternatives, not independent cultural classification. No scalar composite CFM or validated human-judgment component is reported.
+
+The saved perceptual-distance table uses $D_{VGG}(x,C)=\sum_l\operatorname{MSE}(F_l(x),F_l(C))$. It is an uncalibrated feature-distance diagnostic, not standard LPIPS. FID was not computed. The CFM and perceptual scripts reload quantized output images, whereas the main comparison evaluates the in-memory optimized tensor; small differences between their edge scores need not imply different structural definitions.
+
+All optimization branches use Adam with learning rate $0.03$, gradient-norm clipping at $5$, and per-step clamping to $[-2,2]$ in the normalized tensor domain. Base and multi-scale runs initialize from the content tensor and nominally run for 400 steps; AdaIN refinement runs for 200 steps. The scripts break on a NaN loss and save the current output. The available CSV files do not include per-run termination flags, runtime, or repeated-seed identifiers. We therefore describe configured steps without claiming independently verified completion of every iteration or a measured efficiency advantage.
+
+\section{Experiments}
+\label{sec:experiments}
+
+\subsection{Data, Comparisons, and Evidence Units}
+The main comparison used the Cartesian product of three ceramic tea-ware images and five reference images, producing 15 content--style pairs. The reference names describe Dunhuang lotus, Dunhuang deer, blue-and-white porcelain (full and ring examples), and ink landscape. Each category was represented by one image, so category means do not estimate within-category diversity. Inputs were resized to $256\times256$ and used without semantic annotations. The study concerns digital product visualizations; no physical products, cultural-authenticity labels, or three-dimensional mappings were evaluated.
+
+\begin{table}[t]
+\centering
+\caption{Evidence coverage of the archived experiments. Counts distinguish image pairs, outputs, and ratings. No repeated-seed uncertainty is available.}
+\label{tab:coverage}
+\begin{tabular}{@{}p{0.42\linewidth}p{0.53\linewidth}@{}}
+\toprule
+Comparison & Available evidence \\
+\midrule
+Base objective, with/without $L_{ssp}$ & 15 pairs, 30 result rows \\
+Additional alignment controls & 15 pairs per implementation \\
+Additional $\lambda_{ssp}$ settings & 15 pairs at $10^4$ and 15 at $10^6$ \\
+CFM objective diagnostics & 30 reloaded-output rows \\
+Saved VGG-distance diagnostic & 5 pairs, tea-set carrier only \\
+Multi-scale loss-removal images & 1 pair, 4 configurations \\
+Verified human judgments & None used as empirical evidence \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All descriptive summaries below were recalculated from the archived CSV records, matching baseline and constrained rows by content and reference names. Standard deviations describe variation across the 15 image pairs, not variation across independent training runs. The same references and carriers recur across pairs, and the collection is not a random sample from a cultural-image population. We therefore emphasize paired descriptive effects rather than treating the 15 pairs as independent evidence of population-level statistical significance. No equivalence margin was prespecified for content or appearance preservation.
+
+The archived code and saved results support a retrospective comparison. They do not establish a held-out benchmark: the constraint weights were selected during development, and the same small reference collection was used for evaluation. The analysis therefore addresses the research questions within the available examples, with generalization and independent perceptual validity left unresolved.
+
+\subsection{Reference-Edge Agreement and Content Trade-Off}
+Adding the reference-edge term increased the measured edge agreement for all 15 content--style pairs. The pair-level mean increased from $0.6615$ to $0.9211$, an absolute change of $0.2596$ and a relative increase of $39.2\%$. Across-pair standard deviations were $0.0421$ and $0.0727$, respectively. The paired differences had standard deviation $0.0519$. These observations answer RQ1 in the narrow sense that the added loss improves agreement with its reference-derived structural target.
+
+Table~\ref{tab:main} reports means over the three carriers for each reference. The largest mean absolute increase occurred for the lotus reference, while the full porcelain reference retained a lower constrained score than the other examples. Because each reference category contains one image, this variation should be interpreted as reference-specific behavior, not a ranking of cultural styles. Figure~\ref{fig:qualitative} presents archived outputs for the tea-set carrier under three named references; numerical conclusions use all 15 pairs rather than only the displayed examples.
+
+\begin{table}[t]
+\centering
+\caption{Base-objective comparison, grouped by reference image. Edge agreement is unitless and larger is better; content loss is the implemented feature MSE and smaller is better. Each reference mean covers three carriers.}
+\label{tab:main}
+\small
+\begin{tabular}{@{}p{0.29\linewidth}rrrrr@{}}
+\toprule
+Reference & \multicolumn{3}{c}{Edge agreement} & \multicolumn{2}{c}{Content loss}\\
+\cmidrule(lr){2-4}\cmidrule(l){5-6}
+ & Base & Constr. & $\Delta$ & Base & Constr.\\
+\midrule
+Porcelain (full) & 0.6204 & 0.7979 & 0.1775 & 553.15 & 554.71\\
+Porcelain (ring) & 0.7117 & 0.9769 & 0.2652 & 302.28 & 304.23\\
+Dunhuang deer & 0.6861 & 0.9622 & 0.2760 & 485.76 & 493.28\\
+Dunhuang lotus & 0.6511 & 0.9742 & 0.3232 & 341.57 & 351.86\\
+Ink landscape & 0.6382 & 0.8945 & 0.2563 & 286.03 & 287.33\\
+\midrule
+All 15 pairs & 0.6615 & 0.9211 & 0.2596 & 393.76 & 398.28\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The content objective did not remain identical: its mean increased by $1.15\%$, with an increase in 12 pairs and a decrease in three. This modest aggregate change is a measured trade-off, not a demonstration of perceptual equivalence. The saved Gram-loss values were rounded to two decimal places, leaving most entries at $0.00$ or $0.01$. Their limited precision prevents a reliable conclusion that style loss was unchanged or fully converged. A numerical near-zero in that table also does not establish that human observers perceive equal style quality.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.88\linewidth]{figures/v3/Fig3_actual_comparison.pdf}
+\caption{Archived image comparison for the tea-set carrier with the lotus, ring-porcelain, and ink-landscape references. Columns show the reference, base-objective output, and constrained output. The same image dimensions and display processing are used across columns. These examples illustrate the comparison; all-pair numerical summaries are reported in Table~\ref{tab:main}.}
+\Description{Three rows of actual reference, baseline, and edge-constrained images for the tea-set carrier.}
+\label{fig:qualitative}
+\end{figure}
+
+\subsection{Additional Alignment and Constraint-Weight Comparisons}
+The edge constraint also increased the same structural diagnostic in the three additional local pipelines (Table~\ref{tab:alignment}). For AdaIN initialization, refinement without $L_{ssp}$ already improved the score from $0.6023$ to $0.7034$. Adding the structural term to a refinement of equal configured length raised it further to $0.9047$. The relevant incremental comparison is therefore constrained refinement versus unconstrained refinement, rather than constrained refinement versus the unrefined decoder output. This distinction separates the effect of extra optimization from that of the added objective.
+
+The covariance and attention controls showed positive mean differences as well. Their reconstructions used a different objective scale and $\lambda_{ssp}=300$, compared with $10^5$ in the Gram-based and AdaIN-refinement branches. These runs support compatibility with the local alignment targets; they do not establish an implementation-independent advantage, optimal tuning, or performance against the published WCT and AdaAttN systems. Additional content-quality and computational-cost measurements would be required for a balanced cross-system comparison.
+
+\begin{table}[t]
+\centering
+\caption{Reference-edge agreement in local alignment pipelines, averaged over 15 pairs. ``Control'' is the corresponding reconstruction or refinement without $L_{ssp}$. The unrefined AdaIN initialization has mean 0.6023 and is not the matched refinement control.}
+\label{tab:alignment}
+\begin{tabular}{@{}p{0.46\linewidth}rrr@{}}
+\toprule
+Implemented comparison & Control & With $L_{ssp}$ & $\Delta$\\
+\midrule
+Gram-based optimization & 0.6615 & 0.9211 & 0.2596\\
+AdaIN-initialized refinement & 0.7034 & 0.9047 & 0.2013\\
+Covariance-target reconstruction & 0.6963 & 0.9380 & 0.2417\\
+Attention-target reconstruction & 0.7037 & 0.9610 & 0.2573\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Increasing the structural coefficient increased mean reference-edge agreement at the four available settings (Table~\ref{tab:lambda}). The $0$ and $10^5$ values come from the main comparison, and the other settings were evaluated on the same 15 pairs. This trend confirms that the measured structural target responds to its weight. It does not identify an optimal cultural-fidelity setting: the sweep did not quantify output diversity, human preference, or a joint utility criterion. In particular, the high score at $10^6$ cannot by itself justify that setting or prove that $10^5$ is a perceptually optimal balance.
+
+\begin{table}[t]
+\centering
+\caption{Constraint-weight sensitivity for the base formulation. Each mean covers the same 15 image pairs. The sweep measures reference-edge agreement, not semantic validity or an optimum in perceptual trade-offs.}
+\label{tab:lambda}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+$\lambda_{ssp}$ & Pairs & Mean edge agreement\\
+\midrule
+$0$ & 15 & 0.6615\\
+$10^4$ & 15 & 0.7577\\
+$10^5$ & 15 & 0.9211\\
+$10^6$ & 15 & 0.9858\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Multi-Scale Loss-Removal Case Study}
+The available multi-scale experiment used the tea-set/lotus pair and produced four images: the full objective, and separate removals of the color-, symbol-, and texture-named terms. Figure~\ref{fig:intervention} displays those archived outputs. It provides a direct visual record of what changed when the configured objective changed. The study contains no cross-pair attribute annotations, perceptual ratings, or quantitative off-target-effect measurements. It therefore addresses RQ2 as a qualitative case study, not a statistical demonstration of independent control.
+
+The three terms have distinct inputs and can be adjusted separately in the implementation. However, their effects need not be visually disjoint: feature moments contain structural information, edges contain texture, and Gaussian bands overlap. We consequently retain the intervention as evidence of an inspectable control interface while withdrawing the stronger claim that every removal changes only its named attribute. A convincing independence test would measure both the intended attribute change and off-target changes across multiple references and carriers.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/v3/Fig4_actual_interventions.pdf}
+\caption{Actual multi-scale loss-removal outputs for the single tea-set/lotus case. Panels show the full objective and removal of the color-, symbol-, or texture-named term, with all other configured coefficients held fixed. Labels name loss terms rather than independently validated semantic layers. No image in this panel is a simulated outcome or a separate human rating.}
+\Description{Four equally sized archived outputs: full objective, no color term, no symbol term, and no texture term.}
+\label{fig:intervention}
+\end{figure}
+
+\subsection{Diagnostic Agreement and Evaluation Boundaries}
+The reloaded-output CFM edge score increased from $0.6617$ to $0.9213$, close to the in-memory structural scores. This agreement is expected because both diagnostics use the same Sobel prior; it does not constitute independent confirmation of semantic preservation. The relative-style ratio remained near its upper end, changing from $0.99097$ to $0.99045$. This saturation limits its discrimination within this small set of references, but cannot establish a general failure of appearance statistics or cultural evaluation.
+
+The saved VGG-distance records cover only the five tea-set/reference pairs. Their mean increased from $1022.65$ to $1043.50$, or $2.04\%$. The evaluator's filename parsing uses the prefix before the first underscore as the content name, which excludes the other two carrier names from this saved table. We report the available subset explicitly instead of treating its mean as a 15-pair result. These distances were calculated after saving and reloading images and are not standard LPIPS measurements. FID was not evaluated.
+
+Together, these observations answer RQ3 by establishing the scope of the diagnostics: they quantify edge-target satisfaction, feature discrepancy, and relative matching to a particular reference set. They do not demonstrate that conventional metrics are blind to human-recognizable cultural distortion. The available human-rating file is documented as simulated in the study materials and is excluded from empirical evidence. No correlation with real cultural judgments, inter-rater reliability, or human preference effect is claimed.
+
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{What the Structural Improvement Establishes}
+The comparisons support a specific computational observation: an explicit reference-edge objective increases agreement with the selected reference edges under the archived implementation. Its effect persists across the available image pairs and several local reconstruction targets. This consistency makes the objective a useful, transparent control within the tested workflow. It does not, however, establish that the retained edges are the culturally meaningful parts of the reference or that a designer would prefer the constrained image.
+
+The most immediate alternative explanation for the high structural score is objective alignment. The method is optimized to match reference edges, and the reported score measures closely related edge agreement. This is expected behavior rather than an invalid computation, but it places the result at the level of an optimization diagnostic. A method could raise the score by imposing reference layout at the expense of carrier-specific placement. Independent motif annotation, recognition judgments, and carrier-layout assessment would distinguish useful structural retention from this competing explanation.
+
+The observed content-loss increase further qualifies the phrase ``without sacrificing content.'' Its aggregate magnitude is small relative to the reported content-loss scale, yet there is no prespecified tolerance, equivalence test, or perceptual calibration that would make the change negligible by definition. The correct interpretation is a measured trade-off between the edge target and the content objective. Reporting that trade-off allows later studies to select a design-appropriate operating point rather than treating one coefficient as universally optimal.
+
+\subsection{Control Mechanisms and Prior Work}
+Separately weighted objectives make a synthesis procedure inspectable: a designer or researcher can identify which term was changed and examine the resulting image. This operational property is distinct from semantic disentanglement. Earlier perceptual-factor control and pyramid-based stylization already address spatial, color, and scale-related appearance~\cite{gatys2017control,lapstyle2021}. The present multi-scale variant should be understood in that context, as a fixed-filter combination studied on product images, not as the first decomposition of visual style.
+
+The single intervention case cannot determine whether a term's influence is restricted to its label. The color-named term depends on full-image features, while middle-band edges and high-band variance respond to multiple visual attributes. A useful next experiment would therefore define observable attributes before changing weights, evaluate intended and unintended changes on every pair, and include simpler controls. This would test whether the additional terms provide usable selectivity beyond merely producing visibly different images.
+
+The local covariance and attention results also require implementation-aware interpretation. Matching their targets by iterative reconstruction differs from using the original trained decoders and objectives. The results show that the reference-edge term can act in those local pipelines; they do not resolve whether the same trade-off holds in official implementations with matched preprocessing and runtime. That question requires a separate reproduction study rather than a broader claim inferred from the alignment mechanism alone.
+
+\subsection{Cultural Interpretation and Independent Measurement}
+A cultural reference has more than a contour. Composition, symbolism, context, provenance, and the appropriateness of reuse can affect the interpretation of a product visualization. Neither Sobel edges nor a relative Gram-distance ratio represents these factors explicitly. Culturally situated assessment, such as the dialogue-based approach discussed by Qadri et al.~\cite{qadri2024}, makes clear why technical similarity should be combined with accountable domain interpretation rather than relabeled as cultural authenticity.
+
+The distinction changes how CFM should be used. The objective components are useful for diagnosing a synthesis and identifying examples for systematic review. They are not a validated cultural-fidelity scale, and they should not be used to select only favorable images for a human study. An independent evaluation would present the reference and carrier, randomize method identities, collect judgments under a documented consent and recruitment procedure, and preserve all planned comparisons. Symbol recognizability, appropriateness, and overall aesthetics should be treated as distinct endpoints. Associations with the training-related score would then remain exploratory until replication supports broader validity.
+
+The current study does not supply those human observations. Prepared instruments and simulated ratings can support software checks, but cannot establish cultural or perceptual conclusions. Removing numerical human-validation claims is therefore necessary to keep the manuscript aligned with its available evidence; it is not a substitute for collecting the missing evidence.
+
+\subsection{Reproducibility and Generalization Limits}
+Three implementation issues materially bound the computational findings. First, the archived preprocessing applies ImageNet normalization twice. Although the paired base comparisons share this pipeline, the deviation changes feature scales and complicates comparisons with standard VGG-based methods. Correcting it would require new, explicitly versioned paired runs rather than reinterpretation of the existing numbers. Second, the saved VGG-distance table covers only one carrier because of filename parsing. Fixing that evaluation is necessary for full benchmark coverage, and its present subset cannot establish a universal no-cost trade-off. Third, rounded style-loss values and missing per-run termination and runtime records limit precision and efficiency claims.
+
+The sampling design introduces a separate limit. Five references and three ceramic tea-ware images provide a small, crossed pilot collection with shared sources across pairs. They do not characterize the diversity of each cultural tradition or transfer to textiles, jewelry, architecture, or other product materials. The multi-scale evidence is narrower still, covering one pair. Expanding the study should separate development from evaluation by source image and cultural-reference family, retain unsuccessful outcomes, and assess sensitivity to masks, crop alignment, and resolution.
+
+Data rights and provenance also require documentation before public release. The inspected code and results identify operational filenames, but the present record does not establish a redistributable license and cultural-source history for every reference and carrier. Releasing metadata and code can improve traceability, but does not itself confer image permissions. These constraints affect reproducibility and responsible reuse, even when the computations are technically repeatable.
+
+\section{Conclusion}
+\label{sec:conclusion}
+We examined explicit reference-edge constraints and separately weighted multi-scale objectives for stylizing ceramic product images. On the available 15-pair collection, the edge constraint increased reference-edge agreement while slightly increasing the mean content objective. Additional local alignment controls showed compatible diagnostic changes, and a single loss-removal case illustrated the multi-scale interface. The results support a transparent mechanism for controlling a reference-derived visual prior; they do not establish independent cultural-semantic validity, universally independent visual layers, or a general advantage over published stylization systems. Standard-preprocessing replications, complete diagnostic coverage, and independent cultural and perceptual evaluation are required to advance the framework beyond this pilot scope.
+
+\section*{Data and Code Availability}
+The revision archive contains computational scripts, saved tabular results, summary scripts, and figure provenance. A public repository and a reproducible software environment have not been established. Image redistribution and checkpoint use remain subject to source and permission verification. Simulated human-rating records are excluded from empirical analyses.
+
+\appendix
+\section{Paired Structural Results and Traceability}
+\label{sec:appendix}
+Table~\ref{tab:allpairs} preserves the full set of paired structural scores used in the main comparison. Values are those saved to four decimal places, not newly generated experimental outputs. The revision archive also includes the source CSV files and deterministic summary code. No empirical human-rating result enters the tables or conclusions.
+\begin{table}[h]
+\centering
+\caption{All 15 content--reference pairs in the base comparison. The shared references and carriers mean that rows are not independent samples from a cultural population.}
+\label{tab:allpairs}
+\begin{tabular}{@{}llrrr@{}}
+\toprule
+Carrier & Reference & Base & Constrained & Difference\\
+\midrule
+Tea cup & Porcelain (full) & 0.5869 & 0.7541 & 0.1672\\
+Tea cup & Porcelain (ring) & 0.6684 & 0.9689 & 0.3005\\
+Tea cup & Dunhuang deer & 0.6702 & 0.9608 & 0.2906\\
+Tea cup & Dunhuang lotus & 0.6644 & 0.9694 & 0.3050\\
+Tea cup & Ink landscape & 0.6223 & 0.8914 & 0.2691\\
+Tea set & Porcelain (full) & 0.6603 & 0.8257 & 0.1654\\
+Tea set & Porcelain (ring) & 0.7458 & 0.9823 & 0.2365\\
+Tea set & Dunhuang deer & 0.7028 & 0.9630 & 0.2602\\
+Tea set & Dunhuang lotus & 0.6457 & 0.9758 & 0.3301\\
+Tea set & Ink landscape & 0.6196 & 0.8826 & 0.2630\\
+White cup & Porcelain (full) & 0.6140 & 0.8139 & 0.1999\\
+White cup & Porcelain (ring) & 0.7209 & 0.9794 & 0.2585\\
+White cup & Dunhuang deer & 0.6854 & 0.9627 & 0.2773\\
+White cup & Dunhuang lotus & 0.6431 & 0.9775 & 0.3344\\
+White cup & Ink landscape & 0.6727 & 0.9094 & 0.2367\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Implementation and Reporting Requirements}
+\label{sec:repro}
+The inspected scripts specify architecture, loss terms, image size, and nominal optimization budgets, but not a complete environment lockfile, measured per-image costs, or checkpoint provenance. A reproducible replication should record library and accelerator versions, checkpoint hashes, image-source metadata, all termination states, and exact preprocessing. The double-normalization pipeline should be retained as a historical configuration and compared with a separately versioned standard-preprocessing configuration; its archived results should not be relabeled after changing code.
+
+The saved perceptual evaluation uses only the tea-set subset. A complete evaluator should match carrier names against the known input inventory rather than truncating filenames at an underscore. That correction requires evaluation of the omitted outputs and a new result file, not insertion of inferred values into the existing table. Higher-precision Gram losses and separate runtime records are also needed before claims of equal appearance quality or efficiency can be tested.
+
+Independent perceptual and cultural validation requires a finalized protocol, appropriate ethical procedures, documented recruitment, prespecified endpoints, and genuine raw responses. Prepared questionnaires or simulated scores cannot establish those endpoints. Data/source rights, author details, and a stable code-access route must be resolved before a submission-ready package is declared complete.
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{refs_v3}
+\end{document}
